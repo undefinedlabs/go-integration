@@ -69,13 +69,13 @@ func (svc *Service) start() error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't create container")
 	}
-	defer container.Delete(ctx, containerd.WithSnapshotCleanup)
+	// defer container.Delete(ctx, containerd.WithSnapshotCleanup)
 
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	if err != nil {
 		return errors.Wrap(err, "couldn't create task")
 	}
-	defer task.Delete(ctx)
+	// defer task.Delete(ctx)
 
 	task.Wait(ctx)
 
