@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"time"
+	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type (
@@ -58,7 +59,12 @@ func (svc *Service) start() error {
 
 	container, err := client.NewContainer(ctx, svc.name,
 		containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", svc.name), image),
-		containerd.WithNewSpec(oci.WithImageConfig(image)),
+		containerd.WithNewSpec(
+			oci.WithImageConfig(image),
+			oci.WithHostNamespace(specs.NetworkNamespace),
+			oci.WithHostHostsFile,
+			oci.WithHostResolvconf,
+		),
 	)
 	if err != nil {
 		return errors.Wrap(err, "couldn't create container")
