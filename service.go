@@ -10,6 +10,8 @@ import (
 	"github.com/containerd/containerd/oci"
 	"github.com/docker/distribution/reference"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+	"time"
 )
 
 type (
@@ -22,6 +24,7 @@ type (
 const namespace = "buildkit"
 
 var ctx = namespaces.WithNamespace(context.Background(), namespace)
+var clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2)})
 
 func NewService(name string, image string) *Service {
 	return &Service{name: name, image: image}
@@ -36,7 +39,7 @@ func (svc *Service) ensureRunning() error {
 }
 
 func (svc *Service) start() error {
-	client, err := containerd.New(defaults.DefaultAddress)
+	client, err := containerd.New(defaults.DefaultAddress, clientOpts)
 	if err != nil {
 		return errors.Wrap(err, "couldn't create containerd client")
 	}
@@ -77,7 +80,7 @@ func (svc *Service) start() error {
 }
 
 func (svc *Service) isRunning() bool {
-	client, err := containerd.New(defaults.DefaultAddress)
+	client, err := containerd.New(defaults.DefaultAddress, clientOpts)
 	if err != nil {
 		return false
 	}
