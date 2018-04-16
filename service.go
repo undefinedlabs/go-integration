@@ -13,10 +13,12 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"time"
+	"sync"
 )
 
 type (
 	Service struct {
+		mutex     sync.Mutex
 		name      string
 		image     string
 		container containerd.Container
@@ -42,6 +44,9 @@ func (svc *Service) ensureRunning() error {
 }
 
 func (svc *Service) start() error {
+	svc.mutex.Lock()
+	defer svc.mutex.Unlock()
+
 	client, err := containerd.New(defaults.DefaultAddress, clientOpts)
 	if err != nil {
 		return errors.Wrap(err, "couldn't create containerd client")
@@ -88,6 +93,9 @@ func (svc *Service) start() error {
 }
 
 func (svc *Service) isRunning() bool {
+	svc.mutex.Lock()
+	defer svc.mutex.Unlock()
+
 	if svc.task == nil {
 		return false
 	}
