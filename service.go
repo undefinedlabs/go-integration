@@ -24,7 +24,7 @@ type (
 const namespace = "buildkit"
 
 var ctx = namespaces.WithNamespace(context.Background(), namespace)
-var clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2)})
+var clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2), grpc.WithInsecure()})
 
 func NewService(name string, image string) *Service {
 	return &Service{name: name, image: image}
