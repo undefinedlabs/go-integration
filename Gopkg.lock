@@ -8,6 +8,12 @@
   version = "v0.4.7"
 
 [[projects]]
+  name = "github.com/Microsoft/hcsshim"
+  packages = ["."]
+  revision = "45ef15484298b76abeb9513ea0ea0abd2b5b84b3"
+  version = "v0.6.8"
+
+[[projects]]
   name = "github.com/containerd/containerd"
   packages = [
     ".",
@@ -34,7 +40,6 @@
     "events",
     "events/exchange",
     "filters",
-    "fs",
     "identifiers",
     "images",
     "leases",
@@ -45,22 +50,23 @@
     "oci",
     "platforms",
     "plugin",
-    "protobuf/google/rpc",
     "reference",
     "remotes",
     "remotes/docker",
     "remotes/docker/schema1",
     "rootfs",
-    "snapshots",
-    "sys"
+    "snapshots"
   ]
-  revision = "773c489c9c1b21a6d78b5c538cd395416ec50f88"
-  version = "v1.0.3"
+  revision = "f630d5f0a639d7d73a806f19f1a6157e768756a5"
+  version = "v1.1.0-rc.2"
 
 [[projects]]
   branch = "master"
   name = "github.com/containerd/continuity"
-  packages = ["sysx"]
+  packages = [
+    "fs",
+    "sysx"
+  ]
   revision = "a88ec15d88f2858862e18894307509f0dd64f8c1"
 
 [[projects]]
@@ -76,19 +82,25 @@
   revision = "f6943554a7e7e88b3c14aad190bf05932da84788"
 
 [[projects]]
+  branch = "master"
   name = "github.com/docker/distribution"
   packages = [
-    "digest",
+    "digestset",
     "reference"
   ]
-  revision = "48294d928ced5dd9b378f7fd7c6f5da3ff3f2c89"
-  version = "v2.6.2"
+  revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
 
 [[projects]]
   branch = "master"
   name = "github.com/docker/go-events"
   packages = ["."]
   revision = "9461782956ad83b30282bf90e31fa6a70c255ba9"
+
+[[projects]]
+  name = "github.com/gogo/googleapis"
+  packages = ["google/rpc"]
+  revision = "08a7655d27152912db7aaf4f983275eaf8d128ef"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -130,10 +142,7 @@
 
 [[projects]]
   name = "github.com/opencontainers/runc"
-  packages = [
-    "libcontainer/system",
-    "libcontainer/user"
-  ]
+  packages = ["libcontainer/user"]
   revision = "baf6536d6259209c3edfa2b22237af82942d3dfa"
   version = "v0.1.1"
 
@@ -154,6 +163,12 @@
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
   version = "v1.0.5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/syndtr/gocapability"
+  packages = ["capability"]
+  revision = "33e07d32887e1e06b7c025f27ce52f62c7990bc0"
 
 [[projects]]
   branch = "master"
@@ -253,6 +268,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5c0e2e17ee010a7d1fca921e94d2022d9f8151a15d318ccaaeae41b7c7993c39"
+  inputs-digest = "aa47749f7d1ac90f21d275359ec34878533c0aa39f1597f6769742e40f5a3e89"
   solver-name = "gps-cdcl"
   solver-version = 1
