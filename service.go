@@ -12,8 +12,8 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"time"
 	"sync"
+	"time"
 )
 
 type (
@@ -29,17 +29,32 @@ type (
 var (
 	ctx        = namespaces.NamespaceFromEnv(context.Background())
 	clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2), grpc.WithInsecure()})
+	client     *containerd.Client
 )
+
+func getClient() (*containerd.Client, error) {
+	if client == nil {
+		c, err := containerd.New(defaults.DefaultAddress, clientOpts)
+		if err != nil {
+			return nil, err
+		}
+		client = c
+	}
+	return client, nil
+}
 
 func NewService(name string, image string) *Service {
 	return &Service{name: name, image: image}
 }
 
 func (svc *Service) ensureRunning() error {
-	if svc.isRunning() {
+	isRunning, err := svc.isRunning()
+	if err != nil {
+		return err
+	}
+	if isRunning {
 		return nil
 	}
-
 	return svc.start()
 }
 
@@ -47,11 +62,10 @@ func (svc *Service) start() error {
 	svc.mutex.Lock()
 	defer svc.mutex.Unlock()
 
-	client, err := containerd.New(defaults.DefaultAddress, clientOpts)
+	client, err := getClient()
 	if err != nil {
 		return errors.Wrap(err, "couldn't create containerd client")
 	}
-	defer client.Close()
 
 	ref := svc.image
 	r, err := reference.ParseNormalizedNamed(ref)
@@ -92,20 +106,20 @@ func (svc *Service) start() error {
 	return nil
 }
 
-func (svc *Service) isRunning() bool {
+func (svc *Service) isRunning() (bool, error) {
 	svc.mutex.Lock()
 	defer svc.mutex.Unlock()
 
 	if svc.task == nil {
-		return false
+		return false, nil
 	}
 
 	status, err := svc.task.Status(ctx)
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return status.Status == containerd.Running
+	return status.Status == containerd.Running, nil
 }
 
 func (svc *Service) Hostname() string {
