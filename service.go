@@ -12,7 +12,6 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"os"
 	"time"
 )
 
@@ -26,8 +25,7 @@ type (
 )
 
 var (
-	namespace  = os.Getenv("CONTAINERD_NAMESPACE")
-	ctx        = namespaces.WithNamespace(context.Background(), namespace)
+	ctx        = namespaces.NamespaceFromEnv(context.Background())
 	clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2), grpc.WithInsecure()})
 )
 
