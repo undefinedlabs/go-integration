@@ -99,3 +99,7 @@ func (svc *Service) isRunning() bool {
 
 	return status.Status == containerd.Running
 }
+
+func (svc *Service) Hostname() string {
+	return "localhost"
+}
