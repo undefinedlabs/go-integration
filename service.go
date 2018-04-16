@@ -9,23 +9,27 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	"github.com/docker/distribution/reference"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"os"
 	"time"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 type (
 	Service struct {
-		name  string
-		image string
+		name      string
+		image     string
+		container containerd.Container
+		task      containerd.Task
 	}
 )
 
-const namespace = "buildkit"
-
-var ctx = namespaces.WithNamespace(context.Background(), namespace)
-var clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2), grpc.WithInsecure()})
+var (
+	namespace  = os.Getenv("CONTAINERD_NAMESPACE")
+	ctx        = namespaces.WithNamespace(context.Background(), namespace)
+	clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2), grpc.WithInsecure()})
+)
 
 func NewService(name string, image string) *Service {
 	return &Service{name: name, image: image}
@@ -69,13 +73,13 @@ func (svc *Service) start() error {
 	if err != nil {
 		return errors.Wrap(err, "couldn't create container")
 	}
-	// defer container.Delete(ctx, containerd.WithSnapshotCleanup)
+	svc.container = container
 
 	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
 	if err != nil {
 		return errors.Wrap(err, "couldn't create task")
 	}
-	// defer task.Delete(ctx)
+	svc.task = task
 
 	task.Wait(ctx)
 
@@ -86,16 +90,14 @@ func (svc *Service) start() error {
 }
 
 func (svc *Service) isRunning() bool {
-	client, err := containerd.New(defaults.DefaultAddress, clientOpts)
-	if err != nil {
+	if svc.task == nil {
 		return false
 	}
-	defer client.Close()
 
-	containers, err := client.Containers(ctx, fmt.Sprintf("name==%s", svc.name))
+	status, err := svc.task.Status(ctx)
 	if err != nil {
 		return false
 	}
 
-	return len(containers) > 0
+	return status.Status == containerd.Running
 }
