@@ -21,9 +21,18 @@ type (
 		mutex      sync.Mutex
 		name       string
 		image      string
+		setup      func(svc *Service) error
 		container  containerd.Container
 		task       containerd.Task
 		checkpoint containerd.Image
+	}
+
+	ServiceOption interface {
+		Apply(*Service)
+	}
+
+	SetupOption struct {
+		setup func(svc *Service) error
 	}
 )
 
@@ -44,8 +53,12 @@ func getClient() (*containerd.Client, error) {
 	return client, nil
 }
 
-func NewService(name string, image string) *Service {
-	return &Service{name: name, image: image}
+func NewService(name string, image string, opts ...ServiceOption) *Service {
+	svc := &Service{name: name, image: image}
+	for _, opt := range opts {
+		opt.Apply(svc)
+	}
+	return svc
 }
 
 func (svc *Service) start() error {
@@ -99,8 +112,14 @@ func (svc *Service) startFromScratch() error {
 		return errors.Wrap(err, "couldn't start task")
 	}
 
-	// TODO: initialize and wait until service is up
+	// TODO: properly wait until service is up
 	time.Sleep(time.Second)
+
+	if svc.setup != nil {
+		if err := svc.setup(svc); err != nil {
+			return errors.Wrap(err, "setup failed")
+		}
+	}
 
 	image, err = svc.task.Checkpoint(ctx)
 	if err != nil {
@@ -168,4 +187,12 @@ func (svc *Service) isRunning() (bool, error) {
 
 func (svc *Service) Hostname() string {
 	return "localhost"
+}
+
+func (o SetupOption) Apply(svc *Service) {
+	svc.setup = o.setup
+}
+
+func WithSetup(setup func(svc *Service) error) SetupOption {
+	return SetupOption{setup: setup}
 }
