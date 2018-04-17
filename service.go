@@ -18,11 +18,12 @@ import (
 
 type (
 	Service struct {
-		mutex     sync.Mutex
-		name      string
-		image     string
-		container containerd.Container
-		task      containerd.Task
+		mutex      sync.Mutex
+		name       string
+		image      string
+		container  containerd.Container
+		task       containerd.Task
+		checkpoint containerd.Image
 	}
 )
 
@@ -47,21 +48,17 @@ func NewService(name string, image string) *Service {
 	return &Service{name: name, image: image}
 }
 
-func (svc *Service) ensureRunning() error {
-	isRunning, err := svc.isRunning()
-	if err != nil {
-		return err
-	}
-	if isRunning {
-		return nil
-	}
-	return svc.start()
-}
-
 func (svc *Service) start() error {
 	svc.mutex.Lock()
 	defer svc.mutex.Unlock()
 
+	if svc.checkpoint != nil {
+		return svc.startFromCheckpoint()
+	}
+	return svc.startFromScratch()
+}
+
+func (svc *Service) startFromScratch() error {
 	client, err := getClient()
 	if err != nil {
 		return errors.Wrap(err, "couldn't create containerd client")
@@ -98,7 +95,57 @@ func (svc *Service) start() error {
 	}
 	svc.task = task
 
-	task.Wait(ctx)
+	if err := task.Start(ctx); err != nil {
+		return errors.Wrap(err, "couldn't start task")
+	}
+
+	// TODO: initialize and wait until service is up
+	time.Sleep(time.Second)
+
+	image, err = svc.task.Checkpoint(ctx)
+	if err != nil {
+		return err
+	}
+	svc.checkpoint = image
+
+	return nil
+}
+
+func (svc *Service) stop() error {
+	svc.mutex.Lock()
+	defer svc.mutex.Unlock()
+
+	isRunning, err := svc.isRunning()
+	if err != nil {
+		return err
+	}
+	if !isRunning {
+		return nil
+	}
+
+	if _, err = svc.task.Delete(ctx, containerd.WithProcessKill); err != nil {
+		return err
+	}
+	svc.task = nil
+	return nil
+}
+
+func (svc *Service) startFromCheckpoint() error {
+	if svc.checkpoint == nil {
+		return fmt.Errorf("no checkpoint found")
+	}
+
+	if svc.container == nil {
+		return fmt.Errorf("no container found")
+	}
+
+	task, err := svc.container.NewTask(ctx,
+		cio.NewCreator(cio.WithStdio),
+		containerd.WithTaskCheckpoint(svc.checkpoint))
+	if err != nil {
+		return errors.Wrap(err, "couldn't create task from checkpoint")
+	}
+	svc.task = task
 
 	if err := task.Start(ctx); err != nil {
 		return errors.Wrap(err, "couldn't start task")
@@ -107,9 +154,6 @@ func (svc *Service) start() error {
 }
 
 func (svc *Service) isRunning() (bool, error) {
-	svc.mutex.Lock()
-	defer svc.mutex.Unlock()
-
 	if svc.task == nil {
 		return false, nil
 	}

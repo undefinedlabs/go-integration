@@ -29,10 +29,16 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 
 func (it *Test) Run(name string, f func(t *testing.T)) {
 	for _, dep := range it.dependsOn {
-		err := dep.svc.ensureRunning()
+		err := dep.svc.start()
 		if err != nil {
 			it.t.Fatalf("[integration] couldn't create service: %v", err)
 		}
+		defer func() {
+			err := dep.svc.stop()
+			if err != nil {
+				it.t.Fatalf("[integration] couldn't stop service: %v", err)
+			}
+		}()
 		it.t.Logf("[integration] service %s is running", dep.svc.name)
 	}
 	it.t.Run(name, f)
