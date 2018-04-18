@@ -1,17 +1,13 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
-	"github.com/containerd/containerd/defaults"
-	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/oci"
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 	"sync"
 	"time"
 )
@@ -42,27 +38,13 @@ type (
 	CriuOption struct{}
 )
 
-var (
-	ctx        = namespaces.NamespaceFromEnv(context.Background())
-	clientOpts = containerd.WithDialOpts([]grpc.DialOption{grpc.WithTimeout(time.Second * 2), grpc.WithInsecure()})
-	client     *containerd.Client
-)
-
-func getClient() (*containerd.Client, error) {
-	if client == nil {
-		c, err := containerd.New(defaults.DefaultAddress, clientOpts)
-		if err != nil {
-			return nil, err
-		}
-		client = c
-	}
-	return client, nil
-}
-
 func NewService(name string, image string, opts ...ServiceOption) *Service {
 	svc := &Service{name: name, image: image}
 	for _, opt := range opts {
 		opt.Apply(svc)
+	}
+	if err := createGlobalClient(); err == nil {
+		svc.pull()
 	}
 	return svc
 }
@@ -78,24 +60,26 @@ func (svc *Service) start() error {
 	return svc.startFromScratch()
 }
 
-func (svc *Service) startFromScratch() error {
-	client, err := getClient()
-	if err != nil {
-		return errors.Wrap(err, "couldn't create containerd client")
-	}
-
-	ref := svc.image
-	r, err := reference.ParseNormalizedNamed(ref)
-	if err == nil {
-		ref = reference.TagNameOnly(r).String()
-	}
-
+func (svc *Service) pull() error {
 	if svc.ctrd.image == nil {
+		ref := svc.image
+		r, err := reference.ParseNormalizedNamed(ref)
+		if err == nil {
+			ref = reference.TagNameOnly(r).String()
+		}
+
 		image, err := client.Pull(ctx, ref, containerd.WithPullUnpack)
 		if err != nil {
 			return errors.Wrap(err, "couldn't pull image")
 		}
 		svc.ctrd.image = image
+	}
+	return nil
+}
+
+func (svc *Service) startFromScratch() error {
+	if err := svc.pull(); err != nil {
+		return err
 	}
 
 	if svc.ctrd.container == nil {
