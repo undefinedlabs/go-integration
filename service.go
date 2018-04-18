@@ -18,13 +18,17 @@ import (
 
 type (
 	Service struct {
-		mutex      sync.Mutex
-		name       string
-		image      string
-		setup      func(svc *Service) error
-		container  containerd.Container
-		task       containerd.Task
-		checkpoint containerd.Image
+		mutex sync.Mutex
+		name  string
+		image string
+		setup func(svc *Service) error
+		ctrd  struct {
+			image      containerd.Image
+			container  containerd.Container
+			task       containerd.Task
+			checkpoint containerd.Image
+		}
+		useCriu bool
 	}
 
 	ServiceOption interface {
@@ -34,6 +38,8 @@ type (
 	SetupOption struct {
 		setup func(svc *Service) error
 	}
+
+	CriuOption struct{}
 )
 
 var (
@@ -65,9 +71,10 @@ func (svc *Service) start() error {
 	svc.mutex.Lock()
 	defer svc.mutex.Unlock()
 
-	if svc.checkpoint != nil {
+	if svc.useCriu && svc.ctrd.checkpoint != nil {
 		return svc.startFromCheckpoint()
 	}
+
 	return svc.startFromScratch()
 }
 
@@ -83,32 +90,39 @@ func (svc *Service) startFromScratch() error {
 		ref = reference.TagNameOnly(r).String()
 	}
 
-	image, err := client.Pull(ctx, ref, containerd.WithPullUnpack)
-	if err != nil {
-		return errors.Wrap(err, "couldn't pull image")
+	if svc.ctrd.image == nil {
+		image, err := client.Pull(ctx, ref, containerd.WithPullUnpack)
+		if err != nil {
+			return errors.Wrap(err, "couldn't pull image")
+		}
+		svc.ctrd.image = image
 	}
 
-	container, err := client.NewContainer(ctx, svc.name,
-		containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", svc.name), image),
-		containerd.WithNewSpec(
-			oci.WithImageConfig(image),
-			oci.WithHostNamespace(specs.NetworkNamespace),
-			oci.WithHostHostsFile,
-			oci.WithHostResolvconf,
-		),
-	)
-	if err != nil {
-		return errors.Wrap(err, "couldn't create container")
+	if svc.ctrd.container == nil {
+		container, err := client.NewContainer(ctx, svc.name,
+			containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", svc.name), svc.ctrd.image),
+			containerd.WithNewSpec(
+				oci.WithImageConfig(svc.ctrd.image),
+				oci.WithHostNamespace(specs.NetworkNamespace),
+				oci.WithHostHostsFile,
+				oci.WithHostResolvconf,
+			),
+		)
+		if err != nil {
+			return errors.Wrap(err, "couldn't create container")
+		}
+		svc.ctrd.container = container
 	}
-	svc.container = container
 
-	task, err := container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
-	if err != nil {
-		return errors.Wrap(err, "couldn't create task")
+	if svc.ctrd.task == nil {
+		task, err := svc.ctrd.container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
+		if err != nil {
+			return errors.Wrap(err, "couldn't create task")
+		}
+		svc.ctrd.task = task
 	}
-	svc.task = task
 
-	if err := task.Start(ctx); err != nil {
+	if err := svc.ctrd.task.Start(ctx); err != nil {
 		return errors.Wrap(err, "couldn't start task")
 	}
 
@@ -121,11 +135,13 @@ func (svc *Service) startFromScratch() error {
 		}
 	}
 
-	image, err = svc.task.Checkpoint(ctx)
-	if err != nil {
-		return err
+	if svc.useCriu {
+		image, err := svc.ctrd.task.Checkpoint(ctx)
+		if err != nil {
+			return err
+		}
+		svc.ctrd.checkpoint = image
 	}
-	svc.checkpoint = image
 
 	return nil
 }
@@ -142,29 +158,41 @@ func (svc *Service) stop() error {
 		return nil
 	}
 
-	if _, err = svc.task.Delete(ctx, containerd.WithProcessKill); err != nil {
+	if _, err = svc.ctrd.task.Delete(ctx, containerd.WithProcessKill); err != nil {
 		return err
 	}
-	svc.task = nil
+	svc.ctrd.task = nil
+
+	if !svc.useCriu {
+		if err = svc.ctrd.container.Delete(ctx, containerd.WithSnapshotCleanup); err != nil {
+			return err
+		}
+		svc.ctrd.container = nil
+	}
+
 	return nil
 }
 
 func (svc *Service) startFromCheckpoint() error {
-	if svc.checkpoint == nil {
+	if svc.ctrd.checkpoint == nil {
 		return fmt.Errorf("no checkpoint found")
 	}
 
-	if svc.container == nil {
+	if svc.ctrd.container == nil {
 		return fmt.Errorf("no container found")
 	}
 
-	task, err := svc.container.NewTask(ctx,
+	if !svc.useCriu {
+		return fmt.Errorf("criu deactivated for this service")
+	}
+
+	task, err := svc.ctrd.container.NewTask(ctx,
 		cio.NewCreator(cio.WithStdio),
-		containerd.WithTaskCheckpoint(svc.checkpoint))
+		containerd.WithTaskCheckpoint(svc.ctrd.checkpoint))
 	if err != nil {
 		return errors.Wrap(err, "couldn't create task from checkpoint")
 	}
-	svc.task = task
+	svc.ctrd.task = task
 
 	if err := task.Start(ctx); err != nil {
 		return errors.Wrap(err, "couldn't start task")
@@ -173,11 +201,11 @@ func (svc *Service) startFromCheckpoint() error {
 }
 
 func (svc *Service) isRunning() (bool, error) {
-	if svc.task == nil {
+	if svc.ctrd.task == nil {
 		return false, nil
 	}
 
-	status, err := svc.task.Status(ctx)
+	status, err := svc.ctrd.task.Status(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -195,4 +223,12 @@ func (o SetupOption) Apply(svc *Service) {
 
 func WithSetup(setup func(svc *Service) error) SetupOption {
 	return SetupOption{setup: setup}
+}
+
+func (o CriuOption) Apply(svc *Service) {
+	svc.useCriu = true
+}
+
+func WithCriu() CriuOption {
+	return CriuOption{}
 }
