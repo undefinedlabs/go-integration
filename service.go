@@ -85,7 +85,13 @@ func (svc *Service) pull() error {
 	return nil
 }
 
-func (svc *Service) startFromScratch() error {
+func (svc *Service) startFromScratch() (err error) {
+	defer func() {
+		if err != nil {
+			svc.stop()
+		}
+	}()
+
 	if err := svc.pull(); err != nil {
 		return err
 	}
