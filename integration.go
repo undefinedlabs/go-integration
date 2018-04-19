@@ -13,6 +13,7 @@ import (
 type (
 	Test struct {
 		t         *testing.T
+		skipIfUnsupported bool
 		dependsOn []Dependency
 	}
 
@@ -23,6 +24,8 @@ type (
 	Dependency struct {
 		svc *Service
 	}
+
+	SkipOption struct {}
 )
 
 var (
@@ -43,13 +46,17 @@ func createGlobalClient() error {
 }
 
 func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
-	err := createGlobalClient()
-	if err != nil {
-		t.Fatalf("[integration] coudn't create containerd client: %v", err)
-	}
 	it := &Test{t: t}
 	for _, o := range opts {
 		o.Apply(it)
+	}
+	err := createGlobalClient()
+	if err != nil {
+		fn := t.Fatalf
+		if it.skipIfUnsupported {
+			fn = t.Skipf
+		}
+		fn("[integration] coudn't create containerd client: %v", err)
 	}
 	return it
 }
@@ -77,4 +84,12 @@ func (o Dependency) Apply(it *Test) {
 
 func DependsOn(svc *Service) Dependency {
 	return Dependency{svc: svc}
+}
+
+func (o SkipOption) Apply(it *Test) {
+	it.skipIfUnsupported = true
+}
+
+func SkipIfNoRuntimeDetected() SkipOption {
+	return SkipOption{}
 }
