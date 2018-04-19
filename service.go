@@ -9,7 +9,6 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"sync"
-	"time"
 )
 
 type (
@@ -18,6 +17,7 @@ type (
 		name  string
 		image string
 		setup func(svc *Service) error
+		wait  func(svc *Service) error
 		ctrd  struct {
 			image      containerd.Image
 			container  containerd.Container
@@ -36,6 +36,10 @@ type (
 	}
 
 	CriuOption struct{}
+
+	WaitOption struct {
+		wait func(svc *Service) error
+	}
 )
 
 func NewService(name string, image string, opts ...ServiceOption) *Service {
@@ -110,12 +114,15 @@ func (svc *Service) startFromScratch() error {
 		return errors.Wrap(err, "couldn't start task")
 	}
 
-	// TODO: properly wait until service is up
-	time.Sleep(time.Second)
+	if svc.wait != nil {
+		if err := svc.wait(svc); err != nil {
+			return errors.Wrap(err, "wait function failed")
+		}
+	}
 
 	if svc.setup != nil {
 		if err := svc.setup(svc); err != nil {
-			return errors.Wrap(err, "setup failed")
+			return errors.Wrap(err, "setup function failed")
 		}
 	}
 
@@ -215,4 +222,12 @@ func (o CriuOption) Apply(svc *Service) {
 
 func WithCriu() CriuOption {
 	return CriuOption{}
+}
+
+func (o WaitOption) Apply(svc *Service) {
+	svc.wait = o.wait
+}
+
+func WithWait(wait func(svc *Service) error) WaitOption {
+	return WaitOption{wait: wait}
 }
