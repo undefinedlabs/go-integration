@@ -12,9 +12,9 @@ import (
 
 type (
 	Test struct {
-		t         *testing.T
+		t                 *testing.T
 		skipIfUnsupported bool
-		dependsOn []Dependency
+		dependsOn         []Dependency
 	}
 
 	TestOption interface {
@@ -25,7 +25,7 @@ type (
 		svc *Service
 	}
 
-	SkipOption struct {}
+	SkipOption struct{}
 )
 
 var (
@@ -63,12 +63,12 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 
 func (it *Test) Run(f func(t *testing.T)) {
 	for _, dep := range it.dependsOn {
-		err := dep.svc.start()
+		err := dep.svc.Start()
 		if err != nil {
 			it.t.Fatalf("[integration] couldn't create service: %v", err)
 		}
 		defer func() {
-			err := dep.svc.stop()
+			err := dep.svc.Stop()
 			if err != nil {
 				it.t.Fatalf("[integration] couldn't stop service: %v", err)
 			}

@@ -57,15 +57,11 @@ func NewService(name string, image string, opts ...ServiceOption) *Service {
 	return svc
 }
 
-func (svc *Service) start() error {
+func (svc *Service) Start() error {
 	svc.mutex.Lock()
 	defer svc.mutex.Unlock()
 
-	if svc.useCriu && svc.ctrd.checkpoint != nil {
-		return svc.startFromCheckpoint()
-	}
-
-	return svc.startFromScratch()
+	return svc.start()
 }
 
 func (svc *Service) pull() error {
@@ -85,7 +81,7 @@ func (svc *Service) pull() error {
 	return nil
 }
 
-func (svc *Service) startFromScratch() (err error) {
+func (svc *Service) start() (err error) {
 	defer func() {
 		if err != nil {
 			svc.stop()
@@ -113,7 +109,11 @@ func (svc *Service) startFromScratch() (err error) {
 	}
 
 	if svc.ctrd.task == nil {
-		task, err := svc.ctrd.container.NewTask(ctx, cio.NewCreator(cio.WithStdio))
+		var opts []containerd.NewTaskOpts
+		if svc.ctrd.checkpoint != nil {
+			opts = append(opts, containerd.WithTaskCheckpoint(svc.ctrd.checkpoint))
+		}
+		task, err := svc.ctrd.container.NewTask(ctx, cio.NewCreator(cio.WithStdio), opts...)
 		if err != nil {
 			return errors.Wrap(err, "couldn't create task")
 		}
@@ -124,7 +124,7 @@ func (svc *Service) startFromScratch() (err error) {
 		return errors.Wrap(err, "couldn't start task")
 	}
 
-	if svc.wait.f != nil {
+	if svc.ctrd.checkpoint == nil && svc.wait.f != nil {
 		c := make(chan error, 1)
 		go func() {
 			c <- svc.wait.f(svc)
@@ -139,7 +139,7 @@ func (svc *Service) startFromScratch() (err error) {
 		}
 	}
 
-	if svc.setup.f != nil {
+	if svc.ctrd.checkpoint == nil && svc.setup.f != nil {
 		if err := svc.setup.f(svc); err != nil {
 			return errors.Wrap(err, "setup function failed")
 		}
@@ -156,10 +156,14 @@ func (svc *Service) startFromScratch() (err error) {
 	return nil
 }
 
-func (svc *Service) stop() error {
+func (svc *Service) Stop() error {
 	svc.mutex.Lock()
 	defer svc.mutex.Unlock()
 
+	return svc.stop()
+}
+
+func (svc *Service) stop() error {
 	isRunning, err := svc.isRunning()
 	if err != nil {
 		return err
@@ -180,33 +184,6 @@ func (svc *Service) stop() error {
 		svc.ctrd.container = nil
 	}
 
-	return nil
-}
-
-func (svc *Service) startFromCheckpoint() error {
-	if svc.ctrd.checkpoint == nil {
-		return fmt.Errorf("no checkpoint found")
-	}
-
-	if svc.ctrd.container == nil {
-		return fmt.Errorf("no container found")
-	}
-
-	if !svc.useCriu {
-		return fmt.Errorf("criu deactivated for this service")
-	}
-
-	task, err := svc.ctrd.container.NewTask(ctx,
-		cio.NewCreator(cio.WithStdio),
-		containerd.WithTaskCheckpoint(svc.ctrd.checkpoint))
-	if err != nil {
-		return errors.Wrap(err, "couldn't create task from checkpoint")
-	}
-	svc.ctrd.task = task
-
-	if err := task.Start(ctx); err != nil {
-		return errors.Wrap(err, "couldn't start task")
-	}
 	return nil
 }
 
