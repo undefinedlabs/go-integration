@@ -9,6 +9,7 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"sync"
+	"time"
 )
 
 type (
@@ -16,8 +17,8 @@ type (
 		mutex sync.Mutex
 		name  string
 		image string
-		setup func(svc *Service) error
-		wait  func(svc *Service) error
+		setup SetupOption
+		wait  WaitOption
 		ctrd  struct {
 			image      containerd.Image
 			container  containerd.Container
@@ -32,15 +33,18 @@ type (
 	}
 
 	SetupOption struct {
-		setup func(svc *Service) error
+		f func(svc *Service) error
 	}
 
 	CriuOption struct{}
 
 	WaitOption struct {
-		wait func(svc *Service) error
+		f       func(svc *Service) error
+		timeout time.Duration
 	}
 )
+
+const defaultWaitTimeout = 10 * time.Second
 
 func NewService(name string, image string, opts ...ServiceOption) *Service {
 	svc := &Service{name: name, image: image}
@@ -114,14 +118,23 @@ func (svc *Service) startFromScratch() error {
 		return errors.Wrap(err, "couldn't start task")
 	}
 
-	if svc.wait != nil {
-		if err := svc.wait(svc); err != nil {
-			return errors.Wrap(err, "wait function failed")
+	if svc.wait.f != nil {
+		c := make(chan error, 1)
+		go func() {
+			c <- svc.wait.f(svc)
+		}()
+		select {
+		case err := <-c:
+			if err != nil {
+				return errors.Wrap(err, "wait function failed")
+			}
+		case <-time.After(svc.wait.timeout):
+			return fmt.Errorf("timeout waiting for service to start")
 		}
 	}
 
-	if svc.setup != nil {
-		if err := svc.setup(svc); err != nil {
+	if svc.setup.f != nil {
+		if err := svc.setup.f(svc); err != nil {
 			return errors.Wrap(err, "setup function failed")
 		}
 	}
@@ -209,11 +222,11 @@ func (svc *Service) Hostname() string {
 }
 
 func (o SetupOption) Apply(svc *Service) {
-	svc.setup = o.setup
+	svc.setup = o
 }
 
 func WithSetup(setup func(svc *Service) error) SetupOption {
-	return SetupOption{setup: setup}
+	return SetupOption{f: setup}
 }
 
 func (o CriuOption) Apply(svc *Service) {
@@ -225,9 +238,12 @@ func WithCriu() CriuOption {
 }
 
 func (o WaitOption) Apply(svc *Service) {
-	svc.wait = o.wait
+	svc.wait = o
 }
 
-func WithWait(wait func(svc *Service) error) WaitOption {
-	return WaitOption{wait: wait}
+func WithWait(wait func(svc *Service) error, timeout time.Duration) WaitOption {
+	if timeout == 0 {
+		timeout = defaultWaitTimeout
+	}
+	return WaitOption{f: wait, timeout: timeout}
 }
