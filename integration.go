@@ -5,6 +5,8 @@ import (
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/defaults"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/opentracing/opentracing-go"
+	"github.com/yoonitio/tracer-go/carriers"
 	"google.golang.org/grpc"
 	"testing"
 	"time"
@@ -61,7 +63,7 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 	return it
 }
 
-func (it *Test) Run(f func(t *testing.T)) {
+func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 	for _, dep := range it.dependsOn {
 		err := dep.svc.Start()
 		if err != nil {
@@ -75,7 +77,22 @@ func (it *Test) Run(f func(t *testing.T)) {
 		}()
 		it.t.Logf("[integration] service %s is running", dep.svc.name)
 	}
-	f(it.t)
+
+	tracer := opentracing.GlobalTracer()
+	testContext := context.TODO()
+	if tracer != nil {
+		spc, err := tracer.Extract(opentracing.TextMap, carriers.NewEnvironCarrier())
+		if err != nil {
+			it.t.Fatalf("[integration] couldn't extract tracing context: %v", err)
+		}
+		sp := opentracing.GlobalTracer().StartSpan("NewIntegrationTest", opentracing.ChildOf(spc))
+		defer sp.Finish()
+		testContext = opentracing.ContextWithSpan(context.TODO(), sp)
+	} else {
+		it.t.Log("[integration] cannot find valid global tracer")
+	}
+
+	f(testContext, it.t)
 }
 
 func (o Dependency) Apply(it *Test) {
