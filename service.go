@@ -8,6 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
+	"os"
 	"sync"
 	"time"
 )
@@ -45,6 +46,17 @@ type (
 )
 
 const defaultWaitTimeout = 10 * time.Second
+const defaultTracePath = "/tmp/traces"
+const tracePathEnvKey = "YOONIT_TRACE_PATH"
+
+var tracePath = os.Getenv(tracePathEnvKey)
+
+func init() {
+	if tracePath == "" {
+		tracePath = defaultTracePath
+	}
+	os.MkdirAll(tracePath, 0755)
+}
 
 func NewService(name string, image string, opts ...ServiceOption) *Service {
 	svc := &Service{name: name, image: image}
@@ -100,6 +112,15 @@ func (svc *Service) start() (err error) {
 				oci.WithHostNamespace(specs.NetworkNamespace),
 				oci.WithHostHostsFile,
 				oci.WithHostResolvconf,
+				oci.WithMounts([]specs.Mount{
+					{
+						Destination: defaultTracePath,
+						Type:        "bind",
+						Source:      tracePath,
+						Options:     []string{"rbind", "rw"},
+					},
+				}),
+				oci.WithEnv([]string{fmt.Sprintf("%s=%s", tracePathEnvKey, defaultTracePath)}),
 			),
 		)
 		if err != nil {
