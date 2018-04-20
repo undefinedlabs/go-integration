@@ -56,7 +56,7 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 		if it.skipIfUnsupported {
 			fn = t.Skipf
 		}
-		fn("[integration] coudn't create containerd client: %v", err)
+		fn("[integration] couldn't create containerd client: %v", err)
 	}
 	return it
 }
