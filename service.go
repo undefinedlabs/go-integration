@@ -8,7 +8,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
-	"os"
+	"github.com/yoonitio/tracer-go"
 	"sync"
 	"time"
 )
@@ -45,18 +45,10 @@ type (
 	}
 )
 
-const defaultWaitTimeout = 10 * time.Second
-const defaultTracePath = "/tmp/traces"
-const tracePathEnvKey = "YOONIT_TRACE_PATH"
-
-var tracePath = os.Getenv(tracePathEnvKey)
-
-func init() {
-	if tracePath == "" {
-		tracePath = defaultTracePath
-	}
-	os.MkdirAll(tracePath, 0755)
-}
+const (
+	defaultWaitTimeout = 10 * time.Second
+	defaultTracePath   = "/tmp/traces"
+)
 
 func NewService(name string, image string, opts ...ServiceOption) *Service {
 	svc := &Service{name: name, image: image}
@@ -120,7 +112,7 @@ func (svc *Service) start() (err error) {
 						Options:     []string{"rbind", "rw"},
 					},
 				}),
-				oci.WithEnv([]string{fmt.Sprintf("%s=%s", tracePathEnvKey, defaultTracePath)}),
+				oci.WithEnv([]string{fmt.Sprintf("%s=%s", tracer.DefaultTracePathEnvKey, defaultTracePath)}),
 			),
 		)
 		if err != nil {

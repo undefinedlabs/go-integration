@@ -14,6 +14,7 @@
   version = "v0.6.8"
 
 [[projects]]
+  branch = "master"
   name = "github.com/containerd/containerd"
   packages = [
     ".",
@@ -57,8 +58,7 @@
     "rootfs",
     "snapshots"
   ]
-  revision = "f630d5f0a639d7d73a806f19f1a6157e768756a5"
-  version = "v1.1.0-rc.2"
+  revision = "2ac13a8757ecde195b39e1525258c7f952279b40"
 
 [[projects]]
   branch = "master"
@@ -67,7 +67,7 @@
     "fs",
     "sysx"
   ]
-  revision = "a88ec15d88f2858862e18894307509f0dd64f8c1"
+  revision = "c6cef34830231743494fe2969284df7b82cc0ad0"
 
 [[projects]]
   branch = "master"
@@ -153,6 +153,25 @@
   version = "v1.0.1"
 
 [[projects]]
+  name = "github.com/opentracing/basictracer-go"
+  packages = [
+    ".",
+    "wire"
+  ]
+  revision = "1b32af207119a14b1b231d451df3ed04a72efebf"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log"
+  ]
+  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
+  version = "v1.0.2"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
@@ -172,9 +191,15 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/yoonitio/tracer-go"
+  packages = ["."]
+  revision = "1e0000c9c4cc277ea27b94220b6bc8d629965fec"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
+  revision = "e73bf333ef8920dbb52ad18d4bd38ad9d9bc76d7"
 
 [[projects]]
   branch = "master"
@@ -190,7 +215,7 @@
     "lex/httplex",
     "trace"
   ]
-  revision = "a35a21de978d84ffc92f010a153705b170b2f9d1"
+  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
 
 [[projects]]
   branch = "master"
@@ -205,7 +230,7 @@
     "unix",
     "windows"
   ]
-  revision = "ecfd8b563e1320e7282dccf28ad48ec2c68aaebf"
+  revision = "79b0c6888797020a994db17c8510466c72fe75d9"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -268,6 +293,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bee0dafa3fba25b6f80079a54dfba506dcd452346ab9b82103bda939c395e0a8"
+  inputs-digest = "eed19aa9e37694a261d872a1285d31a1ca5c0f76b7ecba15e8337c1dac8d22c3"
   solver-name = "gps-cdcl"
   solver-version = 1
