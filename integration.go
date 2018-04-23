@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"testing"
 	"time"
+	"os"
 )
 
 type (
@@ -38,7 +39,11 @@ var (
 
 func createGlobalClient() error {
 	if client == nil {
-		c, err := containerd.New(defaults.DefaultAddress, clientOpts)
+		address := os.Getenv("CONTAINERD_ADDRESS")
+		if address == "" {
+			address = defaults.DefaultAddress
+		}
+		c, err := containerd.New(address, clientOpts)
 		if err != nil {
 			return err
 		}
