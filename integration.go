@@ -8,9 +8,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/yoonitio/tracer-go/carriers"
 	"google.golang.org/grpc"
+	"os"
 	"testing"
 	"time"
-	"os"
 )
 
 type (
@@ -94,7 +94,10 @@ func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 		if err != nil {
 			it.t.Fatalf("[integration] couldn't extract tracing context: %v", err)
 		}
-		sp := opentracing.GlobalTracer().StartSpan("NewIntegrationTest", opentracing.ChildOf(spc))
+		sp := opentracing.GlobalTracer().StartSpan("NewIntegrationTest",
+			opentracing.ChildOf(spc),
+			opentracing.Tag{Key: "component", Value: "go-integration"},
+		)
 		defer sp.Finish()
 		testContext = opentracing.ContextWithSpan(context.TODO(), sp)
 	} else {
