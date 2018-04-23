@@ -69,14 +69,18 @@ func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 		if err != nil {
 			it.t.Fatalf("[integration] couldn't create service: %v", err)
 		}
-		defer func() {
+		it.t.Logf("[integration] service %s is running", dep.svc.name)
+	}
+
+	defer func() {
+		for _, dep := range it.dependsOn {
 			err := dep.svc.Stop()
 			if err != nil {
 				it.t.Fatalf("[integration] couldn't stop service: %v", err)
 			}
-		}()
-		it.t.Logf("[integration] service %s is running", dep.svc.name)
-	}
+			it.t.Logf("[integration] service %s is stopped", dep.svc.name)
+		}
+	}()
 
 	tracer := opentracing.GlobalTracer()
 	testContext := context.TODO()
