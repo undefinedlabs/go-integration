@@ -10,23 +10,26 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yoonitio/tracer-go"
 	"sync"
+	"syscall"
 	"time"
 )
 
 type (
 	Service struct {
-		mutex sync.Mutex
-		name  string
-		image string
-		setup SetupOption
-		wait  WaitOption
-		ctrd  struct {
+		mutex       sync.Mutex
+		name        string
+		image       string
+		setup       SetupOption
+		wait        WaitOption
+		stopTimeout time.Duration
+		ctrd        struct {
 			image      containerd.Image
 			container  containerd.Container
 			task       containerd.Task
 			checkpoint containerd.Image
 		}
 		useCriu bool
+		cleanup bool
 	}
 
 	ServiceOption interface {
@@ -43,15 +46,22 @@ type (
 		f       func(svc *Service) error
 		timeout time.Duration
 	}
+
+	StopTimeoutOption struct {
+		timeout time.Duration
+	}
+
+	WithCleanup struct{}
 )
 
 const (
 	defaultWaitTimeout = 10 * time.Second
+	defaultStopTimeout = 5 * time.Second
 	defaultTracePath   = "/tmp/traces"
 )
 
 func NewService(name string, image string, opts ...ServiceOption) *Service {
-	svc := &Service{name: name, image: image}
+	svc := &Service{name: name, image: image, stopTimeout: defaultStopTimeout}
 	for _, opt := range opts {
 		opt.Apply(svc)
 	}
@@ -188,6 +198,23 @@ func (svc *Service) stop() error {
 		return nil
 	}
 
+	s, err := svc.ctrd.task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = svc.ctrd.task.Kill(ctx, syscall.SIGTERM)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case <-s:
+		break
+	case <-time.After(svc.stopTimeout):
+		break
+	}
+
 	if _, err = svc.ctrd.task.Delete(ctx, containerd.WithProcessKill); err != nil {
 		return err
 	}
@@ -201,6 +228,13 @@ func (svc *Service) stop() error {
 	}
 
 	return nil
+}
+
+func (svc *Service) IsRunning() (bool, error) {
+	svc.mutex.Lock()
+	defer svc.mutex.Unlock()
+
+	return svc.isRunning()
 }
 
 func (svc *Service) isRunning() (bool, error) {
@@ -245,4 +279,16 @@ func WithWait(wait func(svc *Service) error, timeout time.Duration) WaitOption {
 		timeout = defaultWaitTimeout
 	}
 	return WaitOption{f: wait, timeout: timeout}
+}
+
+func (o StopTimeoutOption) Apply(svc *Service) {
+	svc.stopTimeout = o.timeout
+}
+
+func WithStopTimeout(timeout time.Duration) StopTimeoutOption {
+	return StopTimeoutOption{timeout: timeout}
+}
+
+func (o WithCleanup) Apply(svc *Service) {
+	svc.cleanup = true
 }

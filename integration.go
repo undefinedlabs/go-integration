@@ -70,8 +70,14 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 
 func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 	for _, dep := range it.dependsOn {
-		err := dep.svc.Start()
+		running, err := dep.svc.IsRunning()
 		if err != nil {
+			it.t.Fatalf("[integration] couldn't check if service is running: %v", err)
+		}
+		if running {
+			continue
+		}
+		if err := dep.svc.Start(); err != nil {
 			it.t.Fatalf("[integration] couldn't create service: %v", err)
 		}
 		it.t.Logf("[integration] service %s is running", dep.svc.name)
@@ -79,6 +85,9 @@ func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 
 	defer func() {
 		for _, dep := range it.dependsOn {
+			if !dep.svc.cleanup {
+				continue
+			}
 			err := dep.svc.Stop()
 			if err != nil {
 				it.t.Fatalf("[integration] couldn't stop service: %v", err)
