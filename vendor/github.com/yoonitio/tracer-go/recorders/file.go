@@ -1,4 +1,4 @@
-package tracer
+package recorders
 
 import (
 	"encoding/json"

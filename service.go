@@ -112,7 +112,10 @@ func (svc *Service) start() (err error) {
 						Options:     []string{"rbind", "rw"},
 					},
 				}),
-				oci.WithEnv([]string{fmt.Sprintf("%s=%s", tracer.DefaultTracePathEnvKey, defaultTracePath)}),
+				oci.WithEnv([]string{
+					fmt.Sprintf("%s=%s", tracer.DefaultTracePathEnvKey, defaultTracePath),
+					fmt.Sprintf("%s=%s", tracer.DefaultServiceNameEnvKey, svc.name),
+				}),
 			),
 		)
 		if err != nil {

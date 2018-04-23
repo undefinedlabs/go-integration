@@ -58,7 +58,7 @@
     "rootfs",
     "snapshots"
   ]
-  revision = "2ac13a8757ecde195b39e1525258c7f952279b40"
+  revision = "321c52a0bcbde29cb2c197e9f82f891b7999e9de"
 
 [[projects]]
   branch = "master"
@@ -192,14 +192,18 @@
 [[projects]]
   branch = "master"
   name = "github.com/yoonitio/tracer-go"
-  packages = ["."]
-  revision = "1e0000c9c4cc277ea27b94220b6bc8d629965fec"
+  packages = [
+    ".",
+    "carriers",
+    "recorders"
+  ]
+  revision = "97561a05a5fad405fd1823b1b97cd7c7e0bfd743"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "e73bf333ef8920dbb52ad18d4bd38ad9d9bc76d7"
+  revision = "2b6c08872f4b66da917bb4ce98df4f0307330f78"
 
 [[projects]]
   branch = "master"
@@ -293,6 +297,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "eed19aa9e37694a261d872a1285d31a1ca5c0f76b7ecba15e8337c1dac8d22c3"
+  inputs-digest = "f3515db50bd171d524089a54051abd56a0b7d2a96d2bc0321fc36f3492bac0f0"
   solver-name = "gps-cdcl"
   solver-version = 1
