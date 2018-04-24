@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
@@ -93,8 +94,9 @@ func (svc *Service) start() (err error) {
 	}
 
 	if svc.ctrd.container == nil {
-		container, err := client.NewContainer(ctx, svc.name,
-			containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", svc.name), svc.ctrd.image),
+		id := generateId()
+		container, err := client.NewContainer(ctx, id,
+			containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", id), svc.ctrd.image),
 			containerd.WithNewSpec(
 				oci.WithImageConfig(svc.ctrd.image),
 				oci.WithHostNamespace(specs.NetworkNamespace),
@@ -238,6 +240,12 @@ func (svc *Service) isRunning() (bool, error) {
 
 func (svc *Service) Hostname() string {
 	return "localhost"
+}
+
+func generateId() string {
+	randomBytes := make([]byte, 16)
+	rand.Read(randomBytes)
+	return fmt.Sprintf("%x", randomBytes)
 }
 
 func WithSetup(setup func(svc *Service) error) ServiceOption {
