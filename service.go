@@ -19,7 +19,7 @@ type (
 		mutex       sync.Mutex
 		name        string
 		image       string
-		setup       SetupOption
+		setup       func(svc *Service) error
 		wait        WaitOption
 		stopTimeout time.Duration
 		ctrd        struct {
@@ -32,26 +32,12 @@ type (
 		cleanup bool
 	}
 
-	ServiceOption interface {
-		Apply(*Service)
-	}
-
-	SetupOption struct {
-		f func(svc *Service) error
-	}
-
-	CriuOption struct{}
-
 	WaitOption struct {
 		f       func(svc *Service) error
 		timeout time.Duration
 	}
 
-	StopTimeoutOption struct {
-		timeout time.Duration
-	}
-
-	WithCleanup struct{}
+	ServiceOption func(*Service)
 )
 
 const (
@@ -63,7 +49,7 @@ const (
 func NewService(name string, image string, opts ...ServiceOption) *Service {
 	svc := &Service{name: name, image: image, stopTimeout: defaultStopTimeout}
 	for _, opt := range opts {
-		opt.Apply(svc)
+		opt(svc)
 	}
 	if err := createGlobalClient(); err == nil {
 		svc.pull()
@@ -165,8 +151,8 @@ func (svc *Service) start() (err error) {
 		}
 	}
 
-	if svc.ctrd.checkpoint == nil && svc.setup.f != nil {
-		if err := svc.setup.f(svc); err != nil {
+	if svc.ctrd.checkpoint == nil && svc.setup != nil {
+		if err := svc.setup(svc); err != nil {
 			return errors.Wrap(err, "setup function failed")
 		}
 	}
@@ -254,41 +240,36 @@ func (svc *Service) Hostname() string {
 	return "localhost"
 }
 
-func (o SetupOption) Apply(svc *Service) {
-	svc.setup = o
-}
-
-func WithSetup(setup func(svc *Service) error) SetupOption {
-	return SetupOption{f: setup}
-}
-
-func (o CriuOption) Apply(svc *Service) {
-	svc.useCriu = true
-}
-
-func WithCriu() CriuOption {
-	return CriuOption{}
-}
-
-func (o WaitOption) Apply(svc *Service) {
-	svc.wait = o
-}
-
-func WithWait(wait func(svc *Service) error, timeout time.Duration) WaitOption {
-	if timeout == 0 {
-		timeout = defaultWaitTimeout
+func WithSetup(setup func(svc *Service) error) ServiceOption {
+	return func(svc *Service) {
+		svc.setup = setup
 	}
-	return WaitOption{f: wait, timeout: timeout}
 }
 
-func (o StopTimeoutOption) Apply(svc *Service) {
-	svc.stopTimeout = o.timeout
+func WithCriu() ServiceOption {
+	return func(svc *Service) {
+		svc.useCriu = true
+	}
 }
 
-func WithStopTimeout(timeout time.Duration) StopTimeoutOption {
-	return StopTimeoutOption{timeout: timeout}
+func WithWait(wait func(svc *Service) error, timeout time.Duration) ServiceOption {
+	return func(svc *Service) {
+		if timeout == 0 {
+			timeout = defaultWaitTimeout
+		}
+		svc.wait = WaitOption{
+			f:       wait,
+			timeout: timeout,
+		}
+	}
 }
 
-func (o WithCleanup) Apply(svc *Service) {
+func WithStopTimeout(timeout time.Duration) ServiceOption {
+	return func(svc *Service) {
+		svc.stopTimeout = timeout
+	}
+}
+
+func WithCleanup(svc *Service) {
 	svc.cleanup = true
 }

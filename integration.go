@@ -17,18 +17,10 @@ type (
 	Test struct {
 		t                 *testing.T
 		skipIfUnsupported bool
-		dependsOn         []Dependency
+		dependsOn         []*Service
 	}
 
-	TestOption interface {
-		Apply(*Test)
-	}
-
-	Dependency struct {
-		svc *Service
-	}
-
-	SkipOption struct{}
+	TestOption func(*Test)
 )
 
 var (
@@ -55,7 +47,7 @@ func createGlobalClient() error {
 func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 	it := &Test{t: t}
 	for _, o := range opts {
-		o.Apply(it)
+		o(it)
 	}
 	err := createGlobalClient()
 	if err != nil {
@@ -70,29 +62,29 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 
 func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 	for _, dep := range it.dependsOn {
-		running, err := dep.svc.IsRunning()
+		running, err := dep.IsRunning()
 		if err != nil {
 			it.t.Fatalf("[integration] couldn't check if service is running: %v", err)
 		}
 		if running {
 			continue
 		}
-		if err := dep.svc.Start(); err != nil {
+		if err := dep.Start(); err != nil {
 			it.t.Fatalf("[integration] couldn't create service: %v", err)
 		}
-		it.t.Logf("[integration] service %s is running", dep.svc.name)
+		it.t.Logf("[integration] service %s is running", dep.name)
 	}
 
 	defer func() {
 		for _, dep := range it.dependsOn {
-			if !dep.svc.cleanup {
+			if !dep.cleanup {
 				continue
 			}
-			err := dep.svc.Stop()
+			err := dep.Stop()
 			if err != nil {
 				it.t.Fatalf("[integration] couldn't stop service: %v", err)
 			}
-			it.t.Logf("[integration] service %s is stopped", dep.svc.name)
+			it.t.Logf("[integration] service %s is stopped", dep.name)
 		}
 	}()
 
@@ -116,18 +108,14 @@ func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 	f(testContext, it.t)
 }
 
-func (o Dependency) Apply(it *Test) {
-	it.dependsOn = append(it.dependsOn, o)
+func DependsOn(svc *Service) TestOption {
+	return func(test *Test) {
+		test.dependsOn = append(test.dependsOn, svc)
+	}
 }
 
-func DependsOn(svc *Service) Dependency {
-	return Dependency{svc: svc}
-}
-
-func (o SkipOption) Apply(it *Test) {
-	it.skipIfUnsupported = true
-}
-
-func SkipIfNoRuntimeDetected() SkipOption {
-	return SkipOption{}
+func SkipIfNoRuntimeDetected() TestOption {
+	return func(test *Test) {
+		test.skipIfUnsupported = true
+	}
 }
