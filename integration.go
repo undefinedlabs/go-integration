@@ -16,7 +16,6 @@ import (
 type (
 	Test struct {
 		t                 *testing.T
-		skipIfUnsupported bool
 		dependsOn         []*Service
 	}
 
@@ -51,11 +50,7 @@ func NewIntegrationTest(t *testing.T, opts ...TestOption) *Test {
 	}
 	err := createGlobalClient()
 	if err != nil {
-		fn := t.Fatalf
-		if it.skipIfUnsupported {
-			fn = t.Skipf
-		}
-		fn("[integration] couldn't create containerd client: %v", err)
+		t.Fatalf("[integration] couldn't create containerd client: %v", err)
 	}
 	return it
 }
@@ -111,11 +106,5 @@ func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 func DependsOn(svc *Service) TestOption {
 	return func(test *Test) {
 		test.dependsOn = append(test.dependsOn, svc)
-	}
-}
-
-func SkipIfNoRuntimeDetected() TestOption {
-	return func(test *Test) {
-		test.skipIfUnsupported = true
 	}
 }
