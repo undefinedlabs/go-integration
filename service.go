@@ -29,8 +29,10 @@ type (
 			task       containerd.Task
 			checkpoint containerd.Image
 		}
-		useCriu bool
-		cleanup bool
+		mounts      []specs.Mount
+		environment []string
+		useCriu     bool
+		cleanup     bool
 	}
 
 	WaitOption struct {
@@ -95,6 +97,23 @@ func (svc *Service) start() (err error) {
 
 	if svc.ctrd.container == nil {
 		id := generateId()
+
+		mounts := []specs.Mount{
+			{
+				Destination: defaultTracePath,
+				Type:        "bind",
+				Source:      tracePath,
+				Options:     []string{"rbind", "rw"},
+			},
+		}
+		mounts = append(mounts, svc.mounts...)
+
+		environment := []string{
+			fmt.Sprintf("%s=%s", tracer.DefaultTracePathEnvKey, defaultTracePath),
+			fmt.Sprintf("%s=%s", tracer.DefaultServiceNameEnvKey, svc.name),
+		}
+		environment = append(environment, svc.environment...)
+
 		container, err := client.NewContainer(ctx, id,
 			containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", id), svc.ctrd.image),
 			containerd.WithNewSpec(
@@ -102,18 +121,8 @@ func (svc *Service) start() (err error) {
 				oci.WithHostNamespace(specs.NetworkNamespace),
 				oci.WithHostHostsFile,
 				oci.WithHostResolvconf,
-				oci.WithMounts([]specs.Mount{
-					{
-						Destination: defaultTracePath,
-						Type:        "bind",
-						Source:      tracePath,
-						Options:     []string{"rbind", "rw"},
-					},
-				}),
-				oci.WithEnv([]string{
-					fmt.Sprintf("%s=%s", tracer.DefaultTracePathEnvKey, defaultTracePath),
-					fmt.Sprintf("%s=%s", tracer.DefaultServiceNameEnvKey, svc.name),
-				}),
+				oci.WithMounts(mounts),
+				oci.WithEnv(environment),
 			),
 		)
 		if err != nil {
@@ -254,10 +263,8 @@ func WithSetup(setup func(svc *Service) error) ServiceOption {
 	}
 }
 
-func WithCriu() ServiceOption {
-	return func(svc *Service) {
-		svc.useCriu = true
-	}
+func WithCriu(svc *Service) {
+	svc.useCriu = true
 }
 
 func WithWait(wait func(svc *Service) error, timeout time.Duration) ServiceOption {
@@ -280,4 +287,16 @@ func WithStopTimeout(timeout time.Duration) ServiceOption {
 
 func WithCleanup(svc *Service) {
 	svc.cleanup = true
+}
+
+func WithMounts(m []specs.Mount) ServiceOption {
+	return func(svc *Service) {
+		svc.mounts = append(svc.mounts, m...)
+	}
+}
+
+func WithEnv(v []string) ServiceOption {
+	return func(svc *Service) {
+		svc.environment = append(svc.environment, v...)
+	}
 }

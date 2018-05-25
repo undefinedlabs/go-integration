@@ -15,8 +15,8 @@ import (
 
 type (
 	Test struct {
-		t                 *testing.T
-		dependsOn         []*Service
+		t         *testing.T
+		dependsOn []*Service
 	}
 
 	TestOption func(*Test)
