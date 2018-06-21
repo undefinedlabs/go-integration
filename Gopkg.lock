@@ -10,8 +10,44 @@
 [[projects]]
   name = "github.com/Microsoft/hcsshim"
   packages = ["."]
-  revision = "45ef15484298b76abeb9513ea0ea0abd2b5b84b3"
-  version = "v0.6.8"
+  revision = "800683ae704ac360b2f3f47fa88f3a6c8c9091b5"
+  version = "v0.6.11"
+
+[[projects]]
+  name = "github.com/aws/aws-sdk-go"
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/awsutil",
+    "aws/client",
+    "aws/client/metadata",
+    "aws/corehandlers",
+    "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/stscreds",
+    "aws/csm",
+    "aws/defaults",
+    "aws/ec2metadata",
+    "aws/endpoints",
+    "aws/request",
+    "aws/session",
+    "aws/signer/v4",
+    "internal/sdkio",
+    "internal/sdkrand",
+    "internal/shareddefaults",
+    "private/protocol",
+    "private/protocol/json/jsonutil",
+    "private/protocol/jsonrpc",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
+    "private/protocol/rest",
+    "private/protocol/xml/xmlutil",
+    "service/kinesis",
+    "service/sts"
+  ]
+  revision = "e4805606f5138247510183050abe642344275ebd"
+  version = "v1.14.10"
 
 [[projects]]
   branch = "master"
@@ -34,8 +70,8 @@
     "cio",
     "containers",
     "content",
+    "content/proxy",
     "defaults",
-    "dialer",
     "diff",
     "errdefs",
     "events",
@@ -44,11 +80,11 @@
     "identifiers",
     "images",
     "leases",
-    "linux/runctypes",
     "log",
     "mount",
     "namespaces",
     "oci",
+    "pkg/dialer",
     "platforms",
     "plugin",
     "reference",
@@ -56,18 +92,21 @@
     "remotes/docker",
     "remotes/docker/schema1",
     "rootfs",
-    "snapshots"
+    "runtime/linux/runctypes",
+    "snapshots",
+    "snapshots/proxy"
   ]
-  revision = "321c52a0bcbde29cb2c197e9f82f891b7999e9de"
+  revision = "c1e1f3d6d990e79cfc22317558571008536e0f6e"
 
 [[projects]]
   branch = "master"
   name = "github.com/containerd/continuity"
   packages = [
     "fs",
+    "syscallx",
     "sysx"
   ]
-  revision = "c6cef34830231743494fe2969284df7b82cc0ad0"
+  revision = "246e49050efdf45e8f17fbbcf1547ee376f9939e"
 
 [[projects]]
   branch = "master"
@@ -88,13 +127,19 @@
     "digestset",
     "reference"
   ]
-  revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
+  revision = "749f6afb4572201e3c37325d0ffedb6f32be8950"
 
 [[projects]]
   branch = "master"
   name = "github.com/docker/go-events"
   packages = ["."]
   revision = "9461782956ad83b30282bf90e31fa6a70c255ba9"
+
+[[projects]]
+  name = "github.com/go-ini/ini"
+  packages = ["."]
+  revision = "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5"
+  version = "v1.37.0"
 
 [[projects]]
   name = "github.com/gogo/googleapis"
@@ -121,8 +166,13 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  revision = "0b12d6b5"
 
 [[projects]]
   name = "github.com/opencontainers/go-digest"
@@ -190,6 +240,15 @@
   revision = "33e07d32887e1e06b7c025f27ce52f62c7990bc0"
 
 [[projects]]
+  name = "github.com/vmihailenco/msgpack"
+  packages = [
+    ".",
+    "codes"
+  ]
+  revision = "b5e691b1eb52a28c05e67ab9df303626c095c23b"
+  version = "v3.3.3"
+
+[[projects]]
   branch = "master"
   name = "github.com/yoonitio/tracer-go"
   packages = [
@@ -197,13 +256,13 @@
     "carriers",
     "recorders"
   ]
-  revision = "97561a05a5fad405fd1823b1b97cd7c7e0bfd743"
+  revision = "ea987e871c71135f8ea25c2290615b1969a598c5"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "2b6c08872f4b66da917bb4ce98df4f0307330f78"
+  revision = "7f39a6fea4fe9364fb61e1def6a268a51b4f3a06"
 
 [[projects]]
   branch = "master"
@@ -216,10 +275,9 @@
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "lex/httplex",
     "trace"
   ]
-  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
+  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
 
 [[projects]]
   branch = "master"
@@ -234,7 +292,7 @@
     "unix",
     "windows"
   ]
-  revision = "79b0c6888797020a994db17c8510466c72fe75d9"
+  revision = "ad87a3a340fa7f3bed189293fbfa7a9b7e021ae1"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -258,10 +316,26 @@
   version = "v0.3.0"
 
 [[projects]]
+  name = "google.golang.org/appengine"
+  packages = [
+    ".",
+    "datastore",
+    "internal",
+    "internal/app_identity",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/modules",
+    "internal/remote_api"
+  ]
+  revision = "b1f26356af11148e710935ed1ac8a7f5702c7612"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+  revision = "32ee49c4dd805befd833990acba36cb75042378c"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -275,10 +349,12 @@
     "credentials",
     "encoding",
     "encoding/proto",
-    "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "health/grpc_health_v1",
     "internal",
+    "internal/backoff",
+    "internal/channelz",
+    "internal/grpcrand",
     "keepalive",
     "metadata",
     "naming",
@@ -291,8 +367,8 @@
     "tap",
     "transport"
   ]
-  revision = "d11072e7ca9811b1100b80ca0269ac831f06d024"
-  version = "v1.11.3"
+  revision = "168a6198bcb0ef175f7dacec0b8691fc141dc9b8"
+  version = "v1.13.0"
 
 [solve-meta]
   analyzer-name = "dep"

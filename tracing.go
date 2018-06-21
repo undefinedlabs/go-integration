@@ -5,10 +5,7 @@ import (
 	"github.com/yoonitio/tracer-go"
 )
 
-var tracePath string
-
 func init() {
 	t := tracer.NewTracer()
 	opentracing.SetGlobalTracer(t)
-	tracePath = t.(*tracer.Tracer).Path()
 }

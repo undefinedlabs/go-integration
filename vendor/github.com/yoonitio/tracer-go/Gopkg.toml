@@ -24,6 +24,7 @@
 #   go-tests = true
 #   unused-packages = true
 
+ignored = ["google.golang.org/appengine*"]
 
 [[constraint]]
   name = "github.com/opentracing/basictracer-go"

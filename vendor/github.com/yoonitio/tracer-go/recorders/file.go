@@ -7,21 +7,10 @@ import (
 	"log"
 	"os"
 	"path"
-	"time"
 )
 
 type FileRecorder struct {
 	path string
-}
-
-type JSONLogs struct {
-	Timestamp time.Time
-	Fields    map[string]interface{}
-}
-
-type JSONSpan struct {
-	basictracer.RawSpan
-	Logs []JSONLogs
 }
 
 func NewFileRecorder(path string) basictracer.SpanRecorder {
@@ -35,12 +24,12 @@ func (r *FileRecorder) RecordSpan(span basictracer.RawSpan) {
 	file, _ := os.Create(path.Join(dir, fmt.Sprintf("%d.span.json", span.Context.SpanID)))
 	defer file.Close()
 
-	var logs []JSONLogs
+	var logs []Logs
 	for _, l := range span.Logs {
-		logs = append(logs, JSONLogs{Timestamp: l.Timestamp, Fields: Materialize(l.Fields)})
+		logs = append(logs, Logs{Timestamp: l.Timestamp, Fields: Materialize(l.Fields)})
 	}
 
-	b, err := json.Marshal(&JSONSpan{
+	b, err := json.Marshal(&Span{
 		RawSpan: span,
 		Logs:    logs,
 	})

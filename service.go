@@ -46,7 +46,6 @@ type (
 const (
 	defaultWaitTimeout = 10 * time.Second
 	defaultStopTimeout = 5 * time.Second
-	defaultTracePath   = "/tmp/traces"
 )
 
 func NewService(name string, image string, opts ...ServiceOption) *Service {
@@ -98,18 +97,7 @@ func (svc *Service) start() (err error) {
 	if svc.ctrd.container == nil {
 		id := generateId()
 
-		mounts := []specs.Mount{
-			{
-				Destination: defaultTracePath,
-				Type:        "bind",
-				Source:      tracePath,
-				Options:     []string{"rbind", "rw"},
-			},
-		}
-		mounts = append(mounts, svc.mounts...)
-
 		environment := []string{
-			fmt.Sprintf("%s=%s", tracer.DefaultTracePathEnvKey, defaultTracePath),
 			fmt.Sprintf("%s=%s", tracer.DefaultServiceNameEnvKey, svc.name),
 		}
 		environment = append(environment, svc.environment...)
@@ -121,7 +109,6 @@ func (svc *Service) start() (err error) {
 				oci.WithHostNamespace(specs.NetworkNamespace),
 				oci.WithHostHostsFile,
 				oci.WithHostResolvconf,
-				oci.WithMounts(mounts),
 				oci.WithEnv(environment),
 			),
 		)

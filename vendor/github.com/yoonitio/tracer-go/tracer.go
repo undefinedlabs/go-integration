@@ -16,6 +16,7 @@ type (
 		opentracing.Tracer
 		path string
 		name string
+		streamName string
 	}
 
 	PathOption struct {
@@ -25,15 +26,21 @@ type (
 	NameOption struct {
 		name string
 	}
+
+	StreamNameOption struct {
+		streamName string
+	}
 )
 
 const DefaultTracePathEnvKey = "YOONIT_TRACE_PATH"
 const DefaultServiceNameEnvKey = "YOONIT_SERVICE_NAME"
+const DefaultStreamNameEnvKey = "YOONIT_STREAM_NAME"
 
 func NewTracer(opts ...TracerOption) opentracing.Tracer {
 	tracer := &Tracer{
 		path: os.Getenv(DefaultTracePathEnvKey),
 		name: os.Getenv(DefaultServiceNameEnvKey),
+		streamName: os.Getenv(DefaultStreamNameEnvKey),
 	}
 
 	for _, o := range opts {
@@ -41,7 +48,9 @@ func NewTracer(opts ...TracerOption) opentracing.Tracer {
 	}
 
 	recorder := recorders.NewDummyRecorder()
-	if tracer.path != "" {
+	if tracer.streamName != "" {
+		recorder = recorders.NewKinesisRecorder(tracer.streamName)
+	} else if tracer.path != "" {
 		recorder = recorders.NewFileRecorder(tracer.path)
 	}
 
@@ -82,4 +91,12 @@ func (o NameOption) Apply(t *Tracer) {
 
 func WithName(name string) TracerOption {
 	return NameOption{name: name}
+}
+
+func (o StreamNameOption) Apply(t *Tracer) {
+	t.streamName = o.streamName
+}
+
+func WithStreamName(streamName string) TracerOption {
+	return StreamNameOption{streamName: streamName}
 }
