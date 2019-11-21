@@ -3,16 +3,16 @@ package integration
 import (
 	"crypto/rand"
 	"fmt"
+	"sync"
+	"syscall"
+	"time"
+
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/oci"
 	"github.com/docker/distribution/reference"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
-	"github.com/yoonitio/tracer-go"
-	"sync"
-	"syscall"
-	"time"
 )
 
 type (
@@ -97,11 +97,6 @@ func (svc *Service) start() (err error) {
 	if svc.ctrd.container == nil {
 		id := generateId()
 
-		environment := []string{
-			fmt.Sprintf("%s=%s", tracer.DefaultServiceNameEnvKey, svc.name),
-		}
-		environment = append(environment, svc.environment...)
-
 		container, err := client.NewContainer(ctx, id,
 			containerd.WithNewSnapshot(fmt.Sprintf("%s-snapshot", id), svc.ctrd.image),
 			containerd.WithNewSpec(
@@ -109,7 +104,7 @@ func (svc *Service) start() (err error) {
 				oci.WithHostNamespace(specs.NetworkNamespace),
 				oci.WithHostHostsFile,
 				oci.WithHostResolvconf,
-				oci.WithEnv(environment),
+				oci.WithEnv(svc.environment),
 			),
 		)
 		if err != nil {

@@ -2,15 +2,14 @@ package integration
 
 import (
 	"context"
-	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/defaults"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/opentracing/opentracing-go"
-	"github.com/yoonitio/tracer-go/carriers"
-	"google.golang.org/grpc"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/defaults"
+	"github.com/containerd/containerd/namespaces"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -83,24 +82,7 @@ func (it *Test) Run(f func(ctx context.Context, t *testing.T)) {
 		}
 	}()
 
-	tracer := opentracing.GlobalTracer()
-	testContext := context.TODO()
-	if tracer != nil {
-		spc, err := tracer.Extract(opentracing.TextMap, carriers.NewEnvironCarrier())
-		if err != nil {
-			it.t.Fatalf("[integration] couldn't extract tracing context: %v", err)
-		}
-		sp := opentracing.GlobalTracer().StartSpan("NewIntegrationTest",
-			opentracing.ChildOf(spc),
-			opentracing.Tag{Key: "component", Value: "go-integration"},
-		)
-		defer sp.Finish()
-		testContext = opentracing.ContextWithSpan(context.TODO(), sp)
-	} else {
-		it.t.Log("[integration] cannot find valid global tracer")
-	}
-
-	f(testContext, it.t)
+	f(context.TODO(), it.t)
 }
 
 func DependsOn(svc *Service) TestOption {
