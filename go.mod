@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/containerd/cgroups v0.0.0-20191119152043-9e089962ffff // indirect
-	github.com/containerd/containerd v1.3.1
+	github.com/containerd/containerd v1.3.2
 	github.com/containerd/continuity v0.0.0-20190827140505-75bee3e2ccb6 // indirect
 	github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c // indirect
 	github.com/containerd/ttrpc v0.0.0-20191028202541-4f1b8fe65a5c // indirect
